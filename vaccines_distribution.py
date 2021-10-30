@@ -15,12 +15,13 @@ from scipy.spatial import distance_matrix
 N_RANGE = [2, 3, 4, 5, 6]
 PRIORITIES = [1, 2, 3, 4, 5]
 POPULATION_PATH = r"MopsiLocations2012-Joensuu.csv"
-LIB_OPTIMIZER = r'C:\Program Files\IBM\ILOG\CPLEX_Studio_Community201\cpoptimizer\bin\x64_win64\cpoptimizer.exe'
+# LIB_OPTIMIZER = r'C:\Program Files\IBM\ILOG\CPLEX_Studio_Community201\cpoptimizer\bin\x64_win64\cpoptimizer.exe'
+LIB_OPTIMIZER = r'/Applications/CPLEX_Studio201/cpoptimizer/bin/x86-64_osx/cpoptimizer'
 HOSPITAL_PATH = r'hospitals.csv'
 N_HOSPITALS = 10
 ITERATIONS = 5
-BASE_PLOTS_DIR = r"plots\pd-vdm"
-OPTIMIZED_PLOTS_DIR = r"plots\pd-vdm-o"
+BASE_PLOTS_DIR = os.path.join("plots","pd-vdm")
+OPTIMIZED_PLOTS_DIR = os.path.join("plots", "pd-vdm-o")
 
 
 def plot_map(population, hospitals, priorities, save_to):
