@@ -22,6 +22,7 @@ N_HOSPITALS = 10
 ITERATIONS = 20
 BASE_PLOTS_DIR = os.path.join("plots", "pd-vdm")
 OPTIMIZED_PLOTS_DIR = os.path.join("plots", "pd-vdm-o")
+IMPROVED_PLOTS_DIR = os.path.join("plots", "pd-vdm-o-i")
 
 
 def plot_map(population, hospitals, priorities, save_to):
@@ -187,7 +188,7 @@ def copy_solution(msol, x, iterations, DCs, staff, population):
     return solution
 
 
-def evaluate_solutions(solution, iterations, DCs, staff, population, save_as="result"):
+def evaluate_solutions(solution, iterations, DCs, staff, population, save_as="result", dist_path=""):
     distances = []
     vaccinated = []
     for t in range(iterations):
@@ -204,6 +205,8 @@ def evaluate_solutions(solution, iterations, DCs, staff, population, save_as="re
                                                                      np.sum(distances))
     with open(save_as, "w") as fd:
         fd.write(result)
+    if dist_path:
+        np.savetxt(dist_path, distances)
     return vaccinated
 
 
@@ -245,25 +248,26 @@ if __name__ == '__main__':
     plot_distribution(priorities, "plots")
 
     # PD-VDM base
-    scores, centers = get_clusters(KMedoids, hospitals, BASE_PLOTS_DIR)
-
-    DCs_base = centers[np.argmax(scores)]
-    distances_base = distance_matrix(population, DCs_base)
-    print("Selected best {} hospitals with average silhouette score: {}".format(len(DCs_base), np.max(scores)))
-    plot_map(population, DCs_base, priorities, BASE_PLOTS_DIR)
-
-    msol_base, x_base = run_cplex(list(DCs_base), list(priorities), list(population), staff, vaccines, distances_base,
-                                  ITERATIONS)
-    solution_base = copy_solution(msol_base, x_base, ITERATIONS, DCs_base, staff, population)
-    del msol_base, x_base
-
-    print_solution(solution_base, DCs_base, staff, ITERATIONS)
-
-    plot_solution(solution_base, DCs_base, population, staff, ITERATIONS, priorities, BASE_PLOTS_DIR)
-
-    vaccinated = evaluate_solutions(solution_base, ITERATIONS, DCs_base, staff, population, "result_base.txt")
-
-    plot_vaccinations(vaccinated, population, priorities, BASE_PLOTS_DIR)
+    # scores, centers = get_clusters(KMedoids, hospitals, BASE_PLOTS_DIR)
+    #
+    # DCs_base = centers[np.argmax(scores)]
+    # distances_base = distance_matrix(population, DCs_base)
+    # print("Selected best {} hospitals with average silhouette score: {}".format(len(DCs_base), np.max(scores)))
+    # plot_map(population, DCs_base, priorities, BASE_PLOTS_DIR)
+    #
+    # msol_base, x_base = run_cplex(list(DCs_base), list(priorities), list(population), staff, vaccines, distances_base,
+    #                               ITERATIONS)
+    # solution_base = copy_solution(msol_base, x_base, ITERATIONS, DCs_base, staff, population)
+    # del msol_base, x_base
+    #
+    # print_solution(solution_base, DCs_base, staff, ITERATIONS)
+    #
+    # plot_solution(solution_base, DCs_base, population, staff, ITERATIONS, priorities, BASE_PLOTS_DIR)
+    #
+    # vaccinated = evaluate_solutions(solution_base, ITERATIONS, DCs_base, staff, population, "result_base.txt",
+    #                                 "dist_base.txt")
+    #
+    # plot_vaccinations(vaccinated, population, priorities, BASE_PLOTS_DIR)
 
     # PD-VDM Optimized
     scores, centroids = get_clusters(KMeans, population, OPTIMIZED_PLOTS_DIR)
@@ -292,6 +296,39 @@ if __name__ == '__main__':
     plot_solution(solution_optimized, DCs_optimized, population, staff, ITERATIONS, priorities, OPTIMIZED_PLOTS_DIR)
 
     vaccinated = evaluate_solutions(solution_optimized, ITERATIONS, DCs_optimized, staff, population,
-                                    "result_optimized.txt")
+                                    "result_optimized.txt", "dist_optimized.txt")
 
     plot_vaccinations(vaccinated, population, priorities, OPTIMIZED_PLOTS_DIR)
+
+    # PD-VDM Optimized + Improvements
+    scores, centroids = get_clusters(KMeans, np.append(population, np.array([priorities]).T, axis=1),
+                                     IMPROVED_PLOTS_DIR)
+
+    centroids = centroids[np.argmax(scores)]
+    centroids = centroids[:, :-1]
+    distances_optimized = distance_matrix(centroids, hospitals)
+    DCs_optimized = []
+    for row in range(len(distances_optimized)):
+        best_index = np.argsort(distances_optimized[row])[0]
+        count = 0
+        while best_index in DCs_optimized:
+            count += 1
+            best_index = np.argsort(distances_optimized[row])[count]
+        DCs_optimized.append(best_index)
+    DCs_optimized = hospitals[DCs_optimized]
+    distances_optimized = distance_matrix(population, DCs_optimized)
+    plot_map(population, DCs_optimized, priorities, IMPROVED_PLOTS_DIR)
+
+    msol_optimized, x_optimized = run_cplex(list(DCs_optimized), list(priorities), list(population), staff, vaccines,
+                                            distances_optimized, ITERATIONS)
+    solution_optimized = copy_solution(msol_optimized, x_optimized, ITERATIONS, DCs_optimized, staff, population)
+    del msol_optimized, x_optimized
+
+    print_solution(solution_optimized, DCs_optimized, staff, ITERATIONS)
+
+    plot_solution(solution_optimized, DCs_optimized, population, staff, ITERATIONS, priorities, IMPROVED_PLOTS_DIR)
+
+    vaccinated = evaluate_solutions(solution_optimized, ITERATIONS, DCs_optimized, staff, population,
+                                    "result_improved.txt", "dist_improved.txt")
+
+    plot_vaccinations(vaccinated, population, priorities, IMPROVED_PLOTS_DIR)
